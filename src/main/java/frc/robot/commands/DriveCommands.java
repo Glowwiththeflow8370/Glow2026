@@ -8,6 +8,7 @@
 package frc.robot.commands;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -290,6 +291,43 @@ public class DriveCommands {
                               + formatter.format(Units.metersToInches(wheelRadius))
                               + " inches");
                     })));
+  }
+
+  // Command for limelight alignment stuff (can be used for the thingi)
+  // Trying to use things
+  public static Command pointDrive(Drive drive, Pose2d bot_pose, Pose2d bot_limelight_relative) {
+    return Commands.run(
+        () -> {
+          // Check if PID exists here before i do anything else i think
+          Translation2d bot_is_trans = bot_pose.getTranslation();
+          Translation2d bot_lime_trans = bot_limelight_relative.getTranslation();
+
+          Rotation2d current_rotation = bot_pose.getRotation();
+          Rotation2d current_limelight_rotation = bot_limelight_relative.getRotation();
+
+          // We want a target pose which is set through pid from the data collected
+          // above
+          PIDController schitzoTurnPID = new PIDController(ANGLE_KP, 0.0, ANGLE_KD);
+          PIDController deathThreatDrivePIDX = new PIDController(0.01, 0.0, 0.0);
+          PIDController deathThreatDrivePIDY = new PIDController(0.01, 0.0, 0.0);
+
+          // Need some conditionals :P
+          Translation2d targetTheFool =
+              new Translation2d(
+                  deathThreatDrivePIDX.calculate(bot_lime_trans.getX(), 0),
+                  deathThreatDrivePIDY.calculate(bot_lime_trans.getY(), 0));
+
+          // Ngl, I wanna see if this works lol
+          double pleaseGetTheAngleRight =
+              schitzoTurnPID.calculate(current_limelight_rotation.getDegrees(), 0);
+
+          // Prolly wanna add an if statement :P
+          ChassisSpeeds speeds =
+              new ChassisSpeeds(targetTheFool.getX(), targetTheFool.getY(), pleaseGetTheAngleRight);
+
+          drive.runVelocity(speeds);
+        },
+        drive);
   }
 
   private static class WheelRadiusCharacterizationState {

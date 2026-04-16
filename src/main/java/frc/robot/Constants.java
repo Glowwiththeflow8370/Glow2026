@@ -7,6 +7,7 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.RobotBase;
 
 /**
@@ -46,8 +47,20 @@ public final class Constants {
   }
 
   public final class DriveConstants {
-    public static final String DriveTrainLimelight = "limelight-drivetrain";
+    public static final String DriveTrainLimelight = "limelight-drive";
     public static final double DriveTrainLimelightAngle = 19;
+
+    // Stator Limits
+    public static final double DriveTrainDriveMotorStatorLimit = 80;
+    public static final double DriveTrainTurnMotorStatorLimit = 40;
+    // Supply Limits
+    public static final double DriveTrainDriveMotorSupplyLimit = 60;
+    public static final double DriveTrainTurnMotorSupplyLimit = 60;
+
+    // Measurement stuffs
+    public static final double GOAL_HEIGHT = Units.inchesToMeters(44.25);
+    public static final double LIMELIGHT_SHOOTER_HEIGHT = Units.inchesToMeters(0);
+    public static final double LIMELIGHT_SHOOTER_ANGLE = 16;
   }
 
   public final class IntakeConstants {
@@ -58,15 +71,18 @@ public final class Constants {
 
   public final class IndexingConstants {
 
-    public static final int IndexerMotor1ID = 14;
-    public static final int IndexerMotor2ID = 15;
-    public static final int StageMotorID = 20;
+    public static final int IndexerMotor1ID = 20;
+    public static final int IndexerMotor2ID = 16;
+    // public static final int StageMotorID = 20;
 
     public static final double StageIdleAngle = -198.10546875;
     public static final double StageActiveAnge = 1267.3828125;
   }
 
   public final class OuttakeConstants {
-    public static final int HoodMotorID = 16;
+    public static final int HoodMotorID = 18;
+
+    public static final int ShootMotorID = 14;
+    public static final int ShootFollowerID = 15;
   }
 }

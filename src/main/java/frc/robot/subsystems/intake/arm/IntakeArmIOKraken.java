@@ -8,7 +8,7 @@ import edu.wpi.first.units.measure.Angle;
 import frc.robot.Constants;
 import org.littletonrobotics.junction.Logger;
 
-public class IntakeArmIONeo implements IntakeArmIO {
+public class IntakeArmIOKraken implements IntakeArmIO {
 
   // private DutyCycleEncoder IntakeEncoder;
   private StatusSignal<Angle> IntakeEncoder;
@@ -16,7 +16,7 @@ public class IntakeArmIONeo implements IntakeArmIO {
 
   private TalonFXConfiguration IntakeMotorConfig;
 
-  public IntakeArmIONeo() {
+  public IntakeArmIOKraken() {
     // IntakeEncoder = new DutyCycleEncoder(1);
     IntakeMotor = new TalonFX(Constants.IntakeConstants.IntakePivotMotorID);
     IntakeEncoder = IntakeMotor.getPosition();

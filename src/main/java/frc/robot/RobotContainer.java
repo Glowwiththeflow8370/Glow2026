@@ -7,11 +7,15 @@
 
 package frc.robot;
 
+import static edu.wpi.first.units.Units.Seconds;
+
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
+import edu.wpi.first.units.measure.Time;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandGenericHID;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -36,16 +40,17 @@ import frc.robot.subsystems.indexer.IndexerIOKraken;
 import frc.robot.subsystems.indexer.IndexerIOSim;
 import frc.robot.subsystems.intake.arm.IntakeArm;
 import frc.robot.subsystems.intake.arm.IntakeArmIO;
-import frc.robot.subsystems.intake.arm.IntakeArmIONeo;
+import frc.robot.subsystems.intake.arm.IntakeArmIOKraken;
 import frc.robot.subsystems.intake.arm.IntakeArmIOSim;
 import frc.robot.subsystems.intake.roller.IntakeRoller;
 import frc.robot.subsystems.intake.roller.IntakeRollerIO;
-import frc.robot.subsystems.intake.roller.IntakeRollerNeo;
+import frc.robot.subsystems.intake.roller.IntakeRollerKraken;
 import frc.robot.subsystems.intake.roller.IntakeRollerSim;
-import frc.robot.subsystems.stage.Stage;
-import frc.robot.subsystems.stage.StageIO;
-import frc.robot.subsystems.stage.StageIOFlex;
-import frc.robot.subsystems.stage.StageIOSim;
+import frc.robot.subsystems.shooter.Shooter;
+import frc.robot.subsystems.shooter.ShooterIO;
+import frc.robot.subsystems.shooter.ShooterIOKraken;
+import frc.robot.subsystems.shooter.ShooterIOSim;
+import frc.robot.util.LimelightHelpers;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 /**
@@ -61,7 +66,7 @@ public class RobotContainer {
   private final IntakeRoller intakeRoller;
   private final Indexer indexer;
   private final Hood hood;
-  private final Stage stage;
+  private final Shooter shooter;
 
   // Controller
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -88,12 +93,13 @@ public class RobotContainer {
   private Command reverseHood;
   private Command idleHood;
 
-  private Command idleStage;
-  private Command forwardStage;
-  private Command reverseStage;
+  // private Command activeStage;
+  // private Command inactiveStage;
 
-  private Command activeStage;
-  private Command inactiveStage;
+  // // Shooter commands
+  private Command idleShooter;
+  private Command activeShooter;
+  private Command reverseShooter;
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
@@ -109,11 +115,11 @@ public class RobotContainer {
                 new ModuleIOTalonFX(TunerConstants.FrontRight),
                 new ModuleIOTalonFX(TunerConstants.BackLeft),
                 new ModuleIOTalonFX(TunerConstants.BackRight));
-        intakeArm = new IntakeArm(new IntakeArmIONeo());
-        intakeRoller = new IntakeRoller(new IntakeRollerNeo());
+        intakeArm = new IntakeArm(new IntakeArmIOKraken());
+        intakeRoller = new IntakeRoller(new IntakeRollerKraken());
         indexer = new Indexer(new IndexerIOKraken());
         hood = new Hood(new HoodIOKraken());
-        stage = new Stage(new StageIOFlex());
+        shooter = new Shooter(new ShooterIOKraken());
         // The ModuleIOTalonFXS implementation provides an example implementation for
         // TalonFXS controller connected to a CANdi with a PWM encoder. The
         // implementations
@@ -146,7 +152,7 @@ public class RobotContainer {
         intakeRoller = new IntakeRoller(new IntakeRollerSim());
         indexer = new Indexer(new IndexerIOSim());
         hood = new Hood(new HoodIOSim());
-        stage = new Stage(new StageIOSim());
+        shooter = new Shooter(new ShooterIOSim());
         break;
 
       default:
@@ -162,7 +168,7 @@ public class RobotContainer {
         intakeRoller = new IntakeRoller(new IntakeRollerIO() {});
         indexer = new Indexer(new IndexerIO() {});
         hood = new Hood(new HoodIO() {});
-        stage = new Stage(new StageIO() {});
+        shooter = new Shooter(new ShooterIO() {});
         break;
     }
 
@@ -187,12 +193,13 @@ public class RobotContainer {
 
     // Configure commands
     configureCommands();
+    configureNamedCommands();
 
     intakeArm.setDefaultCommand(idleIntake);
     intakeRoller.setDefaultCommand(idleIntakeRoller);
     indexer.setDefaultCommand(idleIndexer);
     hood.setDefaultCommand(idleHood);
-    stage.setDefaultCommand(inactiveStage);
+    shooter.setDefaultCommand(idleShooter);
     // Configure the button bindings
     configureButtonBindings();
   }
@@ -211,6 +218,16 @@ public class RobotContainer {
             () -> -controller.getLeftY(),
             () -> -controller.getLeftX(),
             () -> -controller.getRightX()));
+
+    // Align to limelight when the A button is held (Testing, hopefully I will have time to
+    // actually use it during comp)
+    controller
+        .a()
+        .whileTrue(
+            DriveCommands.pointDrive(
+                drive,
+                drive.getPose(),
+                LimelightHelpers.getBotPose2d(Constants.DriveConstants.DriveTrainLimelight)));
 
     // Lock to 0° when A button is held
     // controller
@@ -236,19 +253,20 @@ public class RobotContainer {
     //                 drive)
     //             .ignoringDisable(true));
 
-    // controller.x().whileTrue(intakeForward);
-    // controller.a().whileTrue(intakeReverse);
+    controller.x().whileTrue(intakeForward);
+    controller.a().whileTrue(intakeReverse);
 
-    // controller.b().whileTrue(intakeIntake);
-    // controller.a().whileTrue(intakeOuttake);
+    controller.b().whileTrue(intakeIntake);
+    controller.a().whileTrue(intakeOuttake);
 
-    controller.leftTrigger().whileTrue(runIndexer);
-    controller.rightTrigger().whileTrue(reverseIndexer);
+    // controller.leftTrigger().whileTrue(runIndexer);
+    // controller.rightTrigger().whileTrue(reverseIndexer);
 
     buttonbox.button(Constants.ButtonboxIds.CLIMB_READY).whileTrue(reverseHood);
     buttonbox.button(Constants.ButtonboxIds.CLIMB_ACTIVATE).whileTrue(fowardHood);
-    buttonbox.button(Constants.ButtonboxIds.TRANS_FEED).whileTrue(activeStage);
-    buttonbox.button(Constants.ButtonboxIds.TRANS_REV).whileTrue(inactiveStage);
+    buttonbox.button(Constants.ButtonboxIds.TRANS_FEED).whileTrue(runIndexer);
+    buttonbox.button(Constants.ButtonboxIds.SHOOTER_FERR).whileTrue(reverseShooter);
+    // buttonbox.button(Constants.ButtonboxIds.TRANS_REV).whileTrue(inactiveStage);
 
     buttonbox.button(Constants.ButtonboxIds.INTAKE_IN).whileTrue(intakeIntake);
     buttonbox.button(Constants.ButtonboxIds.INTAKE_OUT).whileTrue(intakeOuttake);
@@ -257,17 +275,18 @@ public class RobotContainer {
     buttonbox.button(Constants.ButtonboxIds.INTAKE_STOW).whileTrue(intakeReverse);
 
     buttonbox.button(Constants.ButtonboxIds.TRANS_REV).whileTrue(reverseIndexer);
-    buttonbox.button(Constants.ButtonboxIds.SHOOTER_SHOOT).whileTrue(runIndexer);
+    buttonbox.button(Constants.ButtonboxIds.SHOOTER_SHOOT).whileTrue(activeShooter);
   }
 
   public void configureNamedCommands() {
     // Here, all of the named commands from pathplanner will be declared
-    NamedCommands.registerCommand("Just Send It", runIndexer);
+    NamedCommands.registerCommand("Just Send It", activeShooter);
+    NamedCommands.registerCommand("Feed", reverseIndexer);
   }
 
   public void configureCommands() {
     // All commands will be created here (unless the program crashes on me)
-    intakeForward = IntakeCommands.rotateIntake(intakeArm, 0.6);
+    intakeForward = IntakeCommands.rotateIntake(intakeArm, 0.3);
     intakeReverse = IntakeCommands.rotateIntake(intakeArm, -0.2);
     idleIntake = IntakeCommands.rotateIntake(intakeArm, 0);
 
@@ -275,20 +294,17 @@ public class RobotContainer {
     intakeOuttake = IntakeCommands.runIntake(intakeRoller, 0.3);
     idleIntakeRoller = IntakeCommands.runIntake(intakeRoller, 0);
 
-    runIndexer = IndexingCommands.runIndexer(indexer, 0.4);
-    reverseIndexer = IndexingCommands.runIndexer(indexer, -0.4);
+    runIndexer = IndexingCommands.runIndexer(indexer, 0.8);
+    reverseIndexer = IndexingCommands.runIndexer(indexer, -0.8);
     idleIndexer = IndexingCommands.runIndexer(indexer, 0);
 
     fowardHood = OuttakeCommands.rotateHood(hood, 0.05);
     reverseHood = OuttakeCommands.rotateHood(hood, -0.05);
     idleHood = OuttakeCommands.rotateHood(hood, 0);
 
-    idleStage = IndexingCommands.manualRotateStage(stage, 0);
-    forwardStage = IndexingCommands.manualRotateStage(stage, 0.1);
-    reverseStage = IndexingCommands.manualRotateStage(stage, -0.1);
-
-    activeStage = IndexingCommands.rotateStage(stage, Constants.IndexingConstants.StageActiveAnge);
-    inactiveStage = IndexingCommands.rotateStage(stage, Constants.IndexingConstants.StageIdleAngle);
+    activeShooter = OuttakeCommands.runShooter(shooter, -0.6);
+    reverseShooter = OuttakeCommands.runShooter(shooter, 0.6);
+    idleShooter = OuttakeCommands.runShooter(shooter, 0);
   }
 
   /**
@@ -297,7 +313,14 @@ public class RobotContainer {
    * @return the command to run in autonomous
    */
   public Command getAutonomousCommand() {
-    return autoChooser.get();
+    return basicThing();
+  }
+
+  // This is probably the only auton i can get working with the
+  // time ive been given lol
+  public Command basicThing() {
+    return activeShooter.alongWith(
+        new WaitCommand(Time.ofBaseUnits(5, Seconds)).andThen(runIndexer));
   }
 
   //   ⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⠤⠒⠒⠒⠒⠒⠠⢀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀

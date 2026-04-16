@@ -20,12 +20,6 @@ public class IndexerIOKraken implements IndexerIO {
     indexMotorConfig1 = new TalonFXConfiguration();
     indexMotorConfig1.MotorOutput.NeutralMode = NeutralModeValue.Coast;
     indexMotorConfig1.CurrentLimits.StatorCurrentLimit = 40;
-    indexMotorConfig1.Slot0.kV = 0.05;
-    indexMotorConfig1.Slot0.kA = 0.05;
-    indexMotorConfig1.Slot0.kS = 0.05;
-    indexMotorConfig1.Slot0.kP = 0.02;
-    indexMotorConfig1.Slot0.kI = 0.0;
-    indexMotorConfig1.Slot0.kD = 0.0;
 
     indexMotorConfig2 = new TalonFXConfiguration();
     indexMotorConfig1.CurrentLimits.StatorCurrentLimit = 40;
